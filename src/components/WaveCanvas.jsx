@@ -53,11 +53,14 @@ const WaveCanvas = ({
 
   // Extend drawing area beyond the visible canvas so zooming out still shows content.
   // Make padding depend on current scale: when zoomed out (scale < 1) draw a wider world range.
+  // When zoomed in (scale > 1), ensure we still draw enough of the wave.
   const basePadding = Math.max(width, 200);
   const invScale = Math.max(1, 1 / Math.max(0.0001, scaleRef.current));
+  const zoomScale = Math.max(0.0001, scaleRef.current);
   // multiplier to make extension more aggressive when zoomed out; clamp to avoid extreme work
   // Increased cap so user can zoom out further; still limited to avoid unbounded loops
-  const padding = Math.min(200000, Math.floor(basePadding * invScale * 3));
+  // When zoomed in, ensure padding is at least enough to cover the visible area
+  const padding = Math.min(200000, Math.floor(Math.max(basePadding, width / zoomScale * 1.5) * invScale * 3));
   const drawStartX = -padding;
   const drawEndX = width + padding;
 
@@ -108,7 +111,8 @@ const WaveCanvas = ({
         const waveEndX = drawEndX;
         let first = true;
         // sampleStep grows when zoomed out (invScale large) to reduce number of points drawn
-        const sampleStep = Math.max(1, Math.min(500, Math.floor(invScale / 2)));
+        // When zoomed in significantly, keep sampleStep at 1 to draw all points
+        const sampleStep = Math.max(1, Math.min(500, Math.floor(Math.max(1, invScale - 0.5) / 2)));
         for (let x = Math.floor(waveStartX); x < Math.ceil(waveEndX); x += sampleStep) {
           const y = height / 2 + amplitudeScale * Math.sin(frequency * (x / 100) + phaseRad + animationTime);
           if (first) {
@@ -120,6 +124,111 @@ const WaveCanvas = ({
         }
         ctx.stroke();
         ctx.shadowBlur = 0;
+
+        // If paused, draw wavelength marker and amplitude arrow on the static frame
+        if (!isPlayingRef.current) {
+          try {
+            // compute one period in x (pixels) from the sine argument: frequency * (x/100)
+            const periodPx = (2 * Math.PI * 100) / Math.max(1e-9, frequency);
+
+            // Determine world-space x that corresponds to visual center
+            const worldCenterX = (width / 2 - panRef.current.x) / Math.max(0.0001, scaleRef.current);
+
+            // Find the nearest peak (argument = pi/2 + 2pi*k) near worldCenterX
+            const basePhase = phaseRad + animationTime;
+            const desired = Math.PI / 2; // peak phase
+            const k = Math.round((frequency * worldCenterX / 100 - (desired - basePhase)) / (2 * Math.PI));
+            const peakX = (desired + 2 * Math.PI * k - basePhase) * 100 / Math.max(1e-9, frequency);
+
+            // Use peakX as left marker and peakX + periodPx as right marker
+            const baseX = peakX;
+            const markerY = height - 18; // near bottom of canvas (in world coords because we're inside transformed ctx)
+
+            ctx.save();
+            ctx.strokeStyle = waveColor;
+            ctx.fillStyle = waveColor;
+            ctx.lineWidth = 2 / Math.max(0.0001, scaleRef.current);
+
+            // Draw double-arrow line for wavelength
+            ctx.beginPath();
+            ctx.moveTo(baseX, markerY);
+            ctx.lineTo(baseX + periodPx, markerY);
+            ctx.stroke();
+            const ah = 6 / Math.max(0.0001, scaleRef.current);
+            // left arrowhead
+            ctx.beginPath();
+            ctx.moveTo(baseX, markerY);
+            ctx.lineTo(baseX + ah, markerY - ah);
+            ctx.lineTo(baseX + ah, markerY + ah);
+            ctx.closePath();
+            ctx.fill();
+            // right arrowhead
+            ctx.beginPath();
+            ctx.moveTo(baseX + periodPx, markerY);
+            ctx.lineTo(baseX + periodPx - ah, markerY - ah);
+            ctx.lineTo(baseX + periodPx - ah, markerY + ah);
+            ctx.closePath();
+            ctx.fill();
+
+            // label wavelength (use meters display from parent prop)
+            ctx.font = `${12 / Math.max(0.0001, scaleRef.current)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const labelText = wavelengthMeters > 0 ? `${wavelengthMeters.toExponential(2)} m` : 'N/A';
+            ctx.fillText(labelText, baseX + periodPx / 2, markerY - 8 / Math.max(0.0001, scaleRef.current));
+
+            // Draw dotted vertical lines from wavelength markers to the wave
+            const centerY = height / 2;
+            const yAtBaseX = centerY + amplitudeScale * Math.sin(frequency * (baseX / 100) + phaseRad + animationTime);
+            const yAtEndX = centerY + amplitudeScale * Math.sin(frequency * ((baseX + periodPx) / 100) + phaseRad + animationTime);
+            
+            ctx.setLineDash([4 / Math.max(0.0001, scaleRef.current), 4 / Math.max(0.0001, scaleRef.current)]);
+            ctx.lineWidth = 1 / Math.max(0.0001, scaleRef.current);
+            // left dotted line
+            ctx.beginPath();
+            ctx.moveTo(baseX, yAtBaseX);
+            ctx.lineTo(baseX, markerY);
+            ctx.stroke();
+            // right dotted line
+            ctx.beginPath();
+            ctx.moveTo(baseX + periodPx, yAtEndX);
+            ctx.lineTo(baseX + periodPx, markerY);
+            ctx.stroke();
+            ctx.setLineDash([]); // reset line dash
+
+            // Draw amplitude arrow at the computed peakX (aligns with the wave peak)
+            const yPeak = centerY + amplitudeScale * Math.sin(frequency * (peakX / 100) + phaseRad + animationTime);
+            // vertical arrow from center line to yPeak
+            ctx.beginPath();
+            ctx.moveTo(peakX, centerY);
+            ctx.lineTo(peakX, yPeak);
+            ctx.stroke();
+            // arrowhead at top/bottom depending on direction
+            ctx.beginPath();
+            if (yPeak < centerY) {
+              // upward arrowhead
+              ctx.moveTo(peakX, yPeak);
+              ctx.lineTo(peakX - ah, yPeak + ah);
+              ctx.lineTo(peakX + ah, yPeak + ah);
+            } else {
+              // downward arrowhead
+              ctx.moveTo(peakX, yPeak);
+              ctx.lineTo(peakX - ah, yPeak - ah);
+              ctx.lineTo(peakX + ah, yPeak - ah);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // amplitude label
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`A (${amplitude}%)`, peakX + 8 / Math.max(0.0001, scaleRef.current), (centerY + yPeak) / 2);
+            ctx.restore();
+          } catch (e) {
+            // drawing overlays should not break the main loop
+            console.error('Overlay draw error', e);
+          }
+        }
       }
 
       ctx.restore();
@@ -164,6 +273,10 @@ const WaveCanvas = ({
       panRef.current.x = e.clientX - canvas.getBoundingClientRect().left - world.x * nextScale;
       panRef.current.y = e.clientY - canvas.getBoundingClientRect().top - world.y * nextScale;
       scaleRef.current = nextScale;
+      // if paused, redraw overlays immediately so they follow zoom
+      if (!isPlayingRef.current && drawRef.current) {
+        try { drawRef.current(); } catch (e) { /* ignore */ }
+      }
     };
 
     const handlePointerDown = (e) => {
@@ -178,6 +291,10 @@ const WaveCanvas = ({
       panRef.current.x += dx;
       panRef.current.y += dy;
       lastPanPosRef.current = { x: e.clientX, y: e.clientY };
+      // if paused, redraw overlays immediately so they follow drag
+      if (!isPlayingRef.current && drawRef.current) {
+        try { drawRef.current(); } catch (e) { /* ignore */ }
+      }
     };
     const handlePointerUp = (e) => {
       isPanningRef.current = false;
@@ -220,6 +337,10 @@ const WaveCanvas = ({
           panRef.current.x += dx;
           panRef.current.y += dy;
           lastPanPosRef.current = { x: t.clientX, y: t.clientY };
+          // if paused, redraw overlays immediately so they follow drag
+          if (!isPlayingRef.current && drawRef.current) {
+            try { drawRef.current(); } catch (e) { /* ignore */ }
+          }
         }
       }
     };
@@ -264,6 +385,8 @@ const WaveCanvas = ({
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
       }
+      // force a redraw so overlays (wavelength/amplitude) appear on the paused frame
+      if (drawRef.current) try { drawRef.current(); } catch (e) {}
     } else {
       // resume
       isPlayingRef.current = true;
