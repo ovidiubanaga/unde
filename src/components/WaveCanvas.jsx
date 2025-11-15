@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Play, Pause } from 'lucide-react';
 const WaveCanvas = ({
   wavelengthMeters,
   amplitude,
@@ -15,6 +15,9 @@ const WaveCanvas = ({
   const isPanningRef = useRef(false);
   const lastPanPosRef = useRef({ x: 0, y: 0 });
   const lastTouchDistanceRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const isPlayingRef = useRef(true);
+  const drawRef = useRef(null);
   useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -91,9 +94,18 @@ const WaveCanvas = ({
 
       ctx.restore();
 
-      animationTime += 0.05;
-      animationRef.current = requestAnimationFrame(drawWave);
+      // advance animation only when playing
+      if (isPlayingRef.current) {
+        animationTime += 0.05;
+        animationRef.current = requestAnimationFrame(drawWave);
+      } else {
+        // when paused, keep a single static frame (do not schedule next frame)
+        animationRef.current = null;
+      }
     };
+
+    // expose draw function so outside handlers can restart the loop
+    drawRef.current = drawWave;
 
     // Interaction handlers: zoom on wheel, pan on drag, pinch to zoom
     const clampScale = (s) => Math.min(8, Math.max(0.2, s));
@@ -196,7 +208,7 @@ const WaveCanvas = ({
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd);
 
-    drawWave();
+  drawWave();
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
@@ -210,6 +222,27 @@ const WaveCanvas = ({
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [wavelengthMeters, amplitude, phase, waveColor]);
+
+  // toggle play/pause from UI
+  const togglePlay = () => {
+    if (isPlayingRef.current) {
+      // pause
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    } else {
+      // resume
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+      // start loop again
+      if (drawRef.current) {
+        animationRef.current = requestAnimationFrame(() => drawRef.current());
+      }
+    }
+  };
   return <motion.div whileHover={{
     scale: 1.005
   }} className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 space-y-4">
@@ -225,11 +258,19 @@ const WaveCanvas = ({
           <h2 className="text-2xl font-bold">Vizualizare</h2>
           <p className="text-sm text-slate-400">Unde sinusoidala pentru vizualizare</p>
         </div>
-        <div className="px-4 py-2 rounded-lg text-sm font-bold" style={{
-        backgroundColor: `${waveColor}20`,
-        color: waveColor
-      }}>
-          {waveType}
+        <div className="flex items-center gap-2">
+          <div className="px-4 py-2 rounded-lg text-sm font-bold" style={{
+          backgroundColor: `${waveColor}20`,
+          color: waveColor
+        }}>
+            {waveType}
+          </div>
+          <button onClick={togglePlay} title={isPlaying ? 'Pause animation' : 'Play animation'} className="px-3 py-2 rounded-lg text-sm font-medium" style={{
+          backgroundColor: `${waveColor}10`,
+          color: waveColor
+        }}>
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 

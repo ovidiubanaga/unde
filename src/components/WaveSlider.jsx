@@ -80,7 +80,7 @@ const WaveSlider = ({
               <Activity className="w-4 h-4" style={{
               color: waveColor
             }} />
-              Amplitude
+              Amplitude (A)
             </Label>
             <span className="font-bold px-3 py-1 rounded-lg text-sm" style={{
             backgroundColor: `${waveColor}20`,
@@ -90,6 +90,7 @@ const WaveSlider = ({
             </span>
           </div>
           <Slider value={[amplitude]} onValueChange={value => setAmplitude(value[0])} min={10} max={100} step={1} className="w-full" />
+          <p className="text-xs text-slate-400 mt-2">y = A sin(ω t + φ)</p>
         </div>
 
         <div className="space-y-3">
