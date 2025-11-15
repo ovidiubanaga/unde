@@ -50,15 +50,34 @@ const WaveCanvas = ({
       // Draw grid (scaled by current transform)
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.1)';
       ctx.lineWidth = 1 / Math.max(0.0001, scaleRef.current); // keep grid hairline when zoomed
+
+  // Extend drawing area beyond the visible canvas so zooming out still shows content.
+  // Make padding depend on current scale: when zoomed out (scale < 1) draw a wider world range.
+  const basePadding = Math.max(width, 200);
+  const invScale = Math.max(1, 1 / Math.max(0.0001, scaleRef.current));
+  // multiplier to make extension more aggressive when zoomed out; clamp to avoid extreme work
+  // Increased cap so user can zoom out further; still limited to avoid unbounded loops
+  const padding = Math.min(200000, Math.floor(basePadding * invScale * 3));
+  const drawStartX = -padding;
+  const drawEndX = width + padding;
+
+      // Horizontal grid lines (extend vertically as before)
       for (let i = 0; i <= 10; i++) {
         const y = (height / 10) * i;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.moveTo(drawStartX, y);
+        ctx.lineTo(drawEndX, y);
         ctx.stroke();
       }
-      for (let i = 0; i <= 20; i++) {
-        const x = (width / 20) * i;
+
+      // Vertical grid lines: compute spacing and draw across extended range
+      const vCount = 40; // more columns for extended canvas
+      // spacing in world coordinates should account for current scale so grid density feels consistent
+      const spacing = (width / 20) / Math.max(0.0001, scaleRef.current);
+      const startIndex = Math.floor(drawStartX / spacing) - 1;
+      const endIndex = Math.ceil(drawEndX / spacing) + 1;
+      for (let i = startIndex; i <= endIndex; i++) {
+        const x = i * spacing;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
@@ -84,9 +103,20 @@ const WaveCanvas = ({
         const amplitudeScale = amplitude / 100 * (height / 2 - 20);
         const frequency = 800 / wavelengthNm; // Visual frequency scaled for display
         const phaseRad = phase * Math.PI / 180;
-        for (let x = 0; x < width; x++) {
+        // Draw across an extended x-range so zooming out still shows wave content
+        const waveStartX = drawStartX;
+        const waveEndX = drawEndX;
+        let first = true;
+        // sampleStep grows when zoomed out (invScale large) to reduce number of points drawn
+        const sampleStep = Math.max(1, Math.min(500, Math.floor(invScale / 2)));
+        for (let x = Math.floor(waveStartX); x < Math.ceil(waveEndX); x += sampleStep) {
           const y = height / 2 + amplitudeScale * Math.sin(frequency * (x / 100) + phaseRad + animationTime);
-          if (x === 0) ctx.moveTo(x, y);else ctx.lineTo(x, y);
+          if (first) {
+            ctx.moveTo(x, y);
+            first = false;
+          } else {
+            ctx.lineTo(x, y);
+          }
         }
         ctx.stroke();
         ctx.shadowBlur = 0;
@@ -107,8 +137,9 @@ const WaveCanvas = ({
     // expose draw function so outside handlers can restart the loop
     drawRef.current = drawWave;
 
-    // Interaction handlers: zoom on wheel, pan on drag, pinch to zoom
-    const clampScale = (s) => Math.min(8, Math.max(0.2, s));
+  // Interaction handlers: zoom on wheel, pan on drag, pinch to zoom
+  // Allow much smaller scales so user can zoom out further. Keep a reasonable max to avoid extreme zoom-in.
+  const clampScale = (s) => Math.min(50, Math.max(0.01, s));
 
     const screenToWorld = (clientX, clientY) => {
       const rect = canvas.getBoundingClientRect();

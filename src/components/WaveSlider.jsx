@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Activity, RotateCw, Waves } from 'lucide-react';
+import { Activity, Waves } from 'lucide-react';
 import { getWaveTypeRanges } from '@/lib/waveUtils';
 const WaveSlider = ({
   amplitude,
@@ -93,23 +93,7 @@ const WaveSlider = ({
           <p className="text-xs text-slate-400 mt-2">y = A sin(ω t + φ)</p>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-slate-300 flex items-center gap-2">
-              <RotateCw className="w-4 h-4" style={{
-              color: waveColor
-            }} />
-              Phase Shift
-            </Label>
-            <span className="font-bold px-3 py-1 rounded-lg text-sm" style={{
-            backgroundColor: `${waveColor}20`,
-            color: waveColor
-          }}>
-              {phase}°
-            </span>
-          </div>
-          <Slider value={[phase]} onValueChange={value => setPhase(value[0])} min={0} max={360} step={1} className="w-full" />
-        </div>
+        {/* Phase Shift control removed per user request */}
       </div>
     </motion.div>;
 };
