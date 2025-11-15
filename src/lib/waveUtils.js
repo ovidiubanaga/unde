@@ -9,6 +9,17 @@ export const SPECTRUM_RANGES = {
   'Radio': { min: 1, max: 1000 },
 };
 
+const SPEED_OF_LIGHT = 299792458;
+
+export const getFrequencyRanges = (type) => {
+  const wlRange = SPECTRUM_RANGES[type] || { min: 1e-14, max: 1000 };
+  // Frequency = c / wavelength, so smaller wavelengths = larger frequencies
+  return {
+    min: SPEED_OF_LIGHT / wlRange.max,
+    max: SPEED_OF_LIGHT / wlRange.min
+  };
+};
+
 export const detectWaveType = (wl) => {
   if (wl <= 0) return 'Invalid';
   if (wl < SPECTRUM_RANGES['Gamma'].max) return 'Gamma';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import WaveInput from '@/components/WaveInput';
@@ -12,10 +12,12 @@ function App() {
   const [exponent, setExponent] = useState(-7);
   const [wavelengthMeters, setWavelengthMeters] = useState(5.0e-7);
   const [frequency, setFrequency] = useState(0);
+  const [independentFrequency, setIndependentFrequency] = useState(6.0e14);
   const [waveType, setWaveType] = useState('Visible');
   const [amplitude, setAmplitude] = useState(50);
   const [phase, setPhase] = useState(0);
   const SPEED_OF_LIGHT = 299792458;
+  const isFrequencyChangeRef = useRef(false);
 
   // Update wavelength in meters when coefficient or exponent changes
   useEffect(() => {
@@ -24,7 +26,14 @@ function App() {
   }, [coefficient, exponent]);
 
   // Update scientific notation inputs when wavelengthMeters changes (e.g., from slider)
+  // Only update if the change is significant to avoid feedback loops
   useEffect(() => {
+    // Skip update if wavelength changed from frequency slider
+    if (isFrequencyChangeRef.current) {
+      isFrequencyChangeRef.current = false;
+      return;
+    }
+
     if (wavelengthMeters <= 0) {
       setCoefficient(0);
       setExponent(0);
@@ -32,17 +41,20 @@ function App() {
     }
     const exp = Math.floor(Math.log10(wavelengthMeters));
     const coeff = wavelengthMeters / 10 ** exp;
-    // Prevent feedback loop by checking if values are different enough
-    if (Math.abs(coeff - coefficient) > 1e-5 || exp !== exponent) {
-      setCoefficient(parseFloat(coeff.toFixed(4)));
+    // Only update if coefficient is significantly different or exponent changed
+    const newCoeff = parseFloat(coeff.toFixed(4));
+    if (Math.abs(newCoeff - coefficient) > 0.01 || exp !== exponent) {
+      setCoefficient(newCoeff);
       setExponent(exp);
     }
   }, [wavelengthMeters]);
   useEffect(() => {
-    // Calculate frequency
+    // Calculate frequency from wavelength
     if (wavelengthMeters > 0) {
       const calculatedFrequency = SPEED_OF_LIGHT / wavelengthMeters;
       setFrequency(calculatedFrequency);
+      // Update independent frequency to keep it in sync
+      setIndependentFrequency(calculatedFrequency);
     } else {
       setFrequency(0);
     }
@@ -51,6 +63,18 @@ function App() {
     const type = detectWaveType(wavelengthMeters);
     setWaveType(type);
   }, [wavelengthMeters]);
+
+  // Handle independent frequency changes using the relation: λ × f = c
+  const handleFrequencyChange = (newFrequency) => {
+    if (newFrequency > 0) {
+      setIndependentFrequency(newFrequency);
+      // Mark that this wavelength change came from frequency slider
+      isFrequencyChangeRef.current = true;
+      // Calculate new wavelength: λ = c / f
+      const newWavelength = SPEED_OF_LIGHT / newFrequency;
+      setWavelengthMeters(newWavelength);
+    }
+  };
   return <>
       <Helmet>
         <title>Wave Explorer - Interactive Wavelength Physics Calculator</title>
@@ -97,7 +121,7 @@ function App() {
           duration: 0.6,
           delay: 0.4
         }}>
-            <WaveSlider amplitude={amplitude} setAmplitude={setAmplitude} phase={phase} setPhase={setPhase} wavelengthMeters={wavelengthMeters} setWavelengthMeters={setWavelengthMeters} waveType={waveType} waveColor={getWaveColor(waveType)} />
+            <WaveSlider amplitude={amplitude} setAmplitude={setAmplitude} phase={phase} setPhase={setPhase} wavelengthMeters={wavelengthMeters} setWavelengthMeters={setWavelengthMeters} independentFrequency={independentFrequency} handleFrequencyChange={handleFrequencyChange} waveType={waveType} waveColor={getWaveColor(waveType)} />
           </motion.div>
 
           <motion.div initial={{

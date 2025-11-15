@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Activity, Waves } from 'lucide-react';
-import { getWaveTypeRanges } from '@/lib/waveUtils';
+import { Activity, Waves, Radio } from 'lucide-react';
+import { getWaveTypeRanges, getFrequencyRanges } from '@/lib/waveUtils';
 const WaveSlider = ({
   amplitude,
   setAmplitude,
@@ -11,6 +11,8 @@ const WaveSlider = ({
   setPhase,
   wavelengthMeters,
   setWavelengthMeters,
+  independentFrequency,
+  handleFrequencyChange,
   waveType,
   waveColor
 }) => {
@@ -19,15 +21,33 @@ const WaveSlider = ({
     min: 3.8e-7,
     max: 7.0e-7
   });
+  const [frequencySliderValue, setFrequencySliderValue] = useState(50);
+  const [frequencyRange, setFrequencyRange] = useState({
+    min: 4.28e14,
+    max: 7.89e14
+  });
   useEffect(() => {
     const newRange = getWaveTypeRanges(waveType);
     setSliderRange(newRange);
 
-    // Recalculate slider position when waveType changes
+    // Recalculate wavelength slider position when waveType changes
     const clampedWavelength = Math.max(newRange.min, Math.min(wavelengthMeters, newRange.max));
     const position = (Math.log10(clampedWavelength) - Math.log10(newRange.min)) / (Math.log10(newRange.max) - Math.log10(newRange.min)) * 100;
     setSliderValue(isNaN(position) ? 50 : position);
+
+    // Update frequency range based on waveType
+    const newFreqRange = getFrequencyRanges(waveType);
+    setFrequencyRange(newFreqRange);
   }, [waveType, wavelengthMeters]);
+
+  // Separate effect for updating frequency slider position
+  useEffect(() => {
+    const newFreqRange = getFrequencyRanges(waveType);
+    // Calculate frequency slider position from independent frequency
+    const clampedFreq = Math.max(newFreqRange.min, Math.min(independentFrequency, newFreqRange.max));
+    const freqPosition = (Math.log10(clampedFreq) - Math.log10(newFreqRange.min)) / (Math.log10(newFreqRange.max) - Math.log10(newFreqRange.min)) * 100;
+    setFrequencySliderValue(isNaN(freqPosition) ? 50 : freqPosition);
+  }, [independentFrequency, waveType]);
   const handleWavelengthSliderChange = value => {
     const position = value[0];
     setSliderValue(position);
@@ -36,6 +56,16 @@ const WaveSlider = ({
     const logMax = Math.log10(sliderRange.max);
     const newWavelength = 10 ** (logMin + position / 100 * (logMax - logMin));
     setWavelengthMeters(newWavelength);
+  };
+
+  const handleFrequencySliderChange = value => {
+    const position = value[0];
+    setFrequencySliderValue(position);
+    // Logarithmic scale for frequency
+    const logMin = Math.log10(frequencyRange.min);
+    const logMax = Math.log10(frequencyRange.max);
+    const newFrequency = 10 ** (logMin + position / 100 * (logMax - logMin));
+    handleFrequencyChange(newFrequency);
   };
   return <motion.div whileHover={{
     scale: 1.01
@@ -91,6 +121,29 @@ const WaveSlider = ({
           </div>
           <Slider value={[amplitude]} onValueChange={value => setAmplitude(value[0])} min={10} max={100} step={1} className="w-full" />
           <p className="text-xs text-slate-400 mt-2">y = A sin(ω t + φ)</p>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-slate-300 flex items-center gap-2">
+              <Radio className="w-4 h-4" style={{
+              color: waveColor
+            }} />
+              Frecvență (f)
+            </Label>
+            <span className="font-bold px-3 py-1 rounded-lg text-sm truncate" style={{
+            backgroundColor: `${waveColor}20`,
+            color: waveColor
+          }}>
+              {independentFrequency > 0 ? `${independentFrequency.toExponential(2)} Hz` : "N/A"}
+            </span>
+          </div>
+          <Slider value={[frequencySliderValue]} onValueChange={handleFrequencySliderChange} min={0} max={100} step={0.1} className="w-full" />
+          <div className="flex justify-between text-xs text-slate-500">
+            <span>{frequencyRange.min.toExponential(1)} Hz</span>
+            <span>{frequencyRange.max.toExponential(1)} Hz</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">λ × f = c (constant)</p>
         </div>
 
         
