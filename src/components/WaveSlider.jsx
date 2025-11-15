@@ -93,7 +93,7 @@ const WaveSlider = ({
           <p className="text-xs text-slate-400 mt-2">y = A sin(ω t + φ)</p>
         </div>
 
-        {/* Phase Shift control removed per user request */}
+        
       </div>
     </motion.div>;
 };
