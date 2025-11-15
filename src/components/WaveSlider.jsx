@@ -58,7 +58,7 @@ const WaveSlider = ({
               <Waves className="w-4 h-4" style={{
               color: waveColor
             }} />
-              Wavelength (within {waveType} range)
+              Lungime de undă (în domeniu {waveType})
             </Label>
             <span className="font-bold px-3 py-1 rounded-lg text-sm truncate" style={{
             backgroundColor: `${waveColor}20`,
@@ -80,7 +80,7 @@ const WaveSlider = ({
               <Activity className="w-4 h-4" style={{
               color: waveColor
             }} />
-              Amplitude (A)
+              Amplitudine (A)
             </Label>
             <span className="font-bold px-3 py-1 rounded-lg text-sm" style={{
             backgroundColor: `${waveColor}20`,

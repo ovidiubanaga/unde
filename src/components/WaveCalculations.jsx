@@ -44,17 +44,17 @@ const WaveCalculations = ({
   };
   const calculations = [{
     icon: Radio,
-    label: 'Wavelength (λ)',
+    label: 'Lungime de undă (λ)',
     value: formatWavelength(wavelengthMeters),
-    description: 'Input value'
+    description: 'Valoare de intrare'
   }, {
     icon: Zap,
-    label: 'Frequency (f)',
+    label: 'Frecvență (f)',
     value: formatFrequency(frequency),
     description: 'f = c / λ'
   }, {
     icon: Calculator,
-    label: 'Photon Energy (E)',
+    label: 'Energie foton (E)',
     value: formatEnergy(frequency),
     description: 'E = hf'
   }];
@@ -69,7 +69,7 @@ const WaveCalculations = ({
           color: waveColor
         }} />
         </div>
-        <h2 className="text-2xl font-bold">Valori a undei:</h2>
+        <h2 className="text-2xl font-bold">Valori ale undei:</h2>
       </div>
 
       <div className="space-y-3">
@@ -107,8 +107,8 @@ const WaveCalculations = ({
 
       <div className="pt-4 border-t border-slate-700">
         <div className="text-xs text-slate-500 space-y-1">
-          <p>c ≈ 3.00 × 10⁸ m/s (speed of light)</p>
-          <p>h ≈ 6.63 × 10⁻³⁴ J·s (Planck's constant)</p>
+          <p>c ≈ 3.00 × 10⁸ m/s (viteza luminii)</p>
+          <p>h ≈ 6.63 × 10⁻³⁴ J·s (constanta lui Planck)</p>
         </div>
       </div>
     </motion.div>;

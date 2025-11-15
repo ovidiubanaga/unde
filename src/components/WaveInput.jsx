@@ -46,9 +46,9 @@ const WaveInput = ({
       <div className="space-y-3">
         <Label htmlFor="wavelength" className="text-slate-300"></Label>
         <div className="flex items-center gap-2">
-          <input id="wavelength-coeff" type="number" value={coefficient} onChange={handleCoefficientChange} step="0.1" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" aria-label="Wavelength coefficient" />
+          <input id="wavelength-coeff" type="number" value={coefficient} onChange={handleCoefficientChange} step="0.1" className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" aria-label="Coeficient lungime de undă" />
           <span className="text-slate-400 font-bold text-lg">×  10 </span>
-          <input id="wavelength-exp" type="number" value={exponent} onChange={handleExponentChange} className="w-20 bg-slate-900/50 border border-slate-600 rounded-xl px-2 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" aria-label="Wavelength exponent" />
+          <input id="wavelength-exp" type="number" value={exponent} onChange={handleExponentChange} className="w-20 bg-slate-900/50 border border-slate-600 rounded-xl px-2 py-3 text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" aria-label="Exponent lungime de undă" />
           <span className="text-slate-400 font-bold text-lg">m</span>
         </div>
       </div>
